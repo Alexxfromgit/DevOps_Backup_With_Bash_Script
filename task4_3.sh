@@ -1,7 +1,5 @@
 #!/bin/bash
 
-ARGS=2
-
 bdir="/tmp/backups/"
 
 if [ ! -d "${bdir}" ]; then
@@ -29,8 +27,15 @@ bnum="$2"
 bname=$(echo "${1}" | sed -r 's/[/]+/-/g' | sed 's/^-//')
 filename=${bname}-$(date '+%Y-%m-%d-%H%M%S').tar.gz
 
-tar --create --gzip --file="$bdir$filename" "${srcdir}" 2> /dev/null
+if ! tar --create --gzip --file="$bdir$filename" "${srcdir}" 2>/dev/null; then
+    echo "error: failed to create backup of ${srcdir}" >&2
+    exit 4
+fi
 
-find "$bdir" -name "${bname}*" -type f -printf "${bdir}%P\n"| sort -n | head -n -"$2" | sed "s/.*/\"&\"/"| xargs rm -f
+if [ "$bnum" -gt 0 ]; then
+    find "$bdir" -name "${bname}*" -type f -printf "${bdir}%P\n" | sort | head -n -"$bnum" | sed "s/.*/\"&\"/" | xargs rm -f
+else
+    find "$bdir" -name "${bname}*" -type f -delete
+fi
 
 exit 0

@@ -1,65 +1,183 @@
-# task4_3
+# Task 4.3 — Simple Backup
 
-**Task 4.3 - Simple back-up**
+## Overview
 
-Job condition:
+A bash script that creates timestamped, compressed backups of a given directory and automatically rotates old archives to stay within a configurable limit.
 
-    Create a bash script task4_3.sh, which creates backups of a given directory. This script should:
-    • Take 2 command line arguments:
-        a. Absolute path to the directory with which you want to create backup
-        b. Number of backups to save
-    • Backups should be saved in the /tmp/backups/ 
-    • When a specified number of backups is reached, the script deletes the oldest backups
-      (i.e., no more than n backups of the specified directory should be located in the backups directory)
-    • The backup files should be packed with tar and compressed with gzip.
-    • The name of the archive file must be in the format <dir name>*.tar.gz
-    By “*” is meant any information convenient to you, according to which you can then sort the backup files.
-    This can be for example numbering (1,2,3, etc.) or time in any format you like (for example, 2018-03-21-145536).
-    • An example of running the script: “./task4_3.sh /etc/default 3”, results in:
-        a. Creating the file /tmp/backups/etc-default.tar.gz,
-           in which the contents of the directory /etc/default are archived
-           (i.e., “/” in the directory path should be replaced with “-”
-           and the root directory in the path should be discarded)
-        b. The backup directory contains no more than 3 archives (files)
-           /tmp/backups/etc-default*.tar.gz.
-        
-Additional requirements:
+---
 
-    1. Each time the script is run, either a backup should be created or an error message should be displayed.
-    2. In the script, it is necessary to provide for checking that the correct number of arguments
-       is passed on the command line, and also that the directory with which you want to create a backup exists.
-       If problems are detected, the script should display a message in stderr and end with a non-zero return code.
-    3. Archive name template for rotation: <archived dirname with dashes>*.tar.gz
-    4. Bash scripts with completed tasks must be uploaded to the githab repository with the name ‘task4_3’
-    5. The githab repository ‘task4_3’ should contain one script task4_3.sh
+## Scripts
 
-Check results:
+### `task4_3.sh`
 
-    • For each launch, a separate VM will be used (OS ubuntu xenial 16.04 server, image).
-      Those. Consider that nobody has configured anything before you.
-      The script will be launched from under the superuser (root). VM has access to the Internet.
-    • The VM will have a repository with a task (for example, https://github.com/user/task4_3),
-      if the repository has a different name, then the task will be automatically marked as unfulfilled.
-    • The script ‘task4_3.sh’ from the root folder of the repository will be automatically launched
-      (if the script is called differently or is in a subfolder, it will not be launched, respectively,
-      the task will be automatically marked as not executed)
-    • The script will run with different sets of parameters and should correctly handle the following situations:
-        ◦ Not all parameters were passed.
-        ◦ More than 2 parameters were passed.
-        ◦ The folder or file you want to create backup does not exist.
-        ◦ The parameter responsible for the number of backups to be stored is not correct.
-        ◦ If the folder where the backup will be stored does not exist, you must create it.
-        ◦ The path to the folder passed to the script as a parameter may contain spaces and special characters.
-    • All error messages should be displayed in stderr. If the message is sent to stdout,
-      it will not be caught by the check, and as a result, the script will be considered
-      not to meet the specified criteria.
-    • The name of the backup must strictly correspond to the given mask case-sensitive
-      (if transferred to /etc/default, then the name of the archive file must begin
-      with etc-default and end with .tar.gz).
-    • It is assumed that both parameters passed to the script are interconnected:
-      i.e. The number of backups for storage applies only to the backup of the transferred folder,
-      and not to all the backups in /tmp/backup.
-    • If you decide to use numbering in file names (etc-default.1.tar.gz, etc-default.2.tar.gz, etc.)
-      then you should implement the generally accepted hierarchy of archives: 
-      the “freshest” should have the name etc- default.tar.gz, previous - etc-default.1.tar.gz,
-      created 2 starts ago - etc-default.2.tar.gz, etc.
+- Accepts two arguments: an absolute path to the source directory and the maximum number of backups to retain
+- Creates the backup destination `/tmp/backups/` if it does not exist
+- Archives and compresses the source directory with `tar` + `gzip`
+- Names the archive `<dir>-<timestamp>.tar.gz`, where `/` in the path is replaced with `-` and the leading separator is dropped (e.g. `/etc/default` → `etc-default-2026-05-10-120000.tar.gz`)
+- After creating a new backup, deletes the oldest archives for that directory so that no more than *n* copies remain
+- Validates both arguments and prints a descriptive message to **stderr** with a non-zero exit code on any error
+
+---
+
+## Additional Requirements
+
+1. Each run must either create a backup or display an error message — silent failure is not acceptable.
+2. The script must validate the argument count and the existence of the source directory. On failure it must write to **stderr** and exit with a non-zero code.
+3. Archive name template for rotation: `<archived dirname with dashes>*.tar.gz`
+4. The script must be uploaded to a GitHub repository named **`task4_3`**.
+5. The repository must contain exactly one file: `task4_3.sh` in the root folder.
+
+---
+
+## Environment Setup Guide
+
+This section describes how to spin up a local Ubuntu 16.04 environment that matches the grader's setup so you can verify the solution before submission.
+
+### Option A — Docker (recommended, works on Windows / macOS / Linux)
+
+**Prerequisites:** Docker Desktop installed and running.
+
+```bash
+# 1. Pull the Ubuntu 16.04 image
+docker pull ubuntu:16.04
+
+# 2. Start a container
+docker run -it --name backup-test ubuntu:16.04 /bin/bash
+```
+
+Inside the container:
+
+```bash
+# 3. Install prerequisites
+apt-get update && apt-get install -y git
+
+# 4. Clone the repository (replace with your actual URL)
+git clone https://github.com/<your-username>/task4_3 /root/task4_3
+cd /root/task4_3
+
+# 5. Create a test directory with some content
+mkdir -p /tmp/testdir && echo "hello" > /tmp/testdir/file.txt
+
+# 6. Run the backup script — creates the first archive
+bash task4_3.sh /tmp/testdir 3
+ls /tmp/backups/
+
+# 7. Run twice more to accumulate 3 backups
+bash task4_3.sh /tmp/testdir 3
+bash task4_3.sh /tmp/testdir 3
+ls /tmp/backups/   # should show exactly 3 archives
+
+# 8. Run a fourth time — the oldest archive must be deleted
+bash task4_3.sh /tmp/testdir 3
+ls /tmp/backups/   # still exactly 3 archives
+
+# 9. Test error cases
+bash task4_3.sh                       # too few args  → exit 1
+bash task4_3.sh /no/such/dir 3        # missing dir   → exit 2
+bash task4_3.sh /tmp/testdir abc      # invalid count → exit 3
+bash task4_3.sh /tmp/testdir 3 extra  # too many args → exit 1
+```
+
+To re-use the container later:
+
+```bash
+docker start -ai backup-test
+```
+
+To start fresh:
+
+```bash
+docker rm backup-test
+```
+
+---
+
+### Option B — Vagrant (closer to bare-metal)
+
+**Prerequisites:** [VirtualBox](https://www.virtualbox.org/) and [Vagrant](https://www.vagrantup.com/) installed.
+
+Create a `Vagrantfile` in any working directory:
+
+```ruby
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/xenial64"
+  config.vm.provision "shell", inline: <<-SHELL
+    apt-get update
+    apt-get install -y git
+  SHELL
+end
+```
+
+```bash
+# Start and SSH into the VM
+vagrant up
+vagrant ssh
+
+# Then follow steps 4–9 from Option A above (inside the VM)
+sudo -i
+git clone https://github.com/<your-username>/task4_3 /root/task4_3
+cd /root/task4_3
+bash task4_3.sh /tmp/testdir 3
+```
+
+---
+
+### Verification Checklist
+
+| Check | Command | Expected result |
+|---|---|---|
+| Backup dir created automatically | `bash task4_3.sh /tmp/testdir 3 && ls /tmp/backups/` | Directory exists, archive present |
+| Archive filename format | `ls /tmp/backups/` | Matches `tmp-testdir-<timestamp>.tar.gz` |
+| Archive is valid gzip | `file /tmp/backups/tmp-testdir-*.tar.gz` | `gzip compressed data` |
+| Rotation keeps exactly *n* files | Run script 4× with limit 3, then `ls /tmp/backups/ \| wc -l` | `3` |
+| Too few arguments | `bash task4_3.sh /tmp/testdir` | Prints error to stderr, exits 1 |
+| Too many arguments | `bash task4_3.sh /tmp/testdir 3 extra` | Prints error to stderr, exits 1 |
+| Non-existent source directory | `bash task4_3.sh /no/such/dir 3` | Prints error to stderr, exits 2 |
+| Non-numeric backup count | `bash task4_3.sh /tmp/testdir abc` | Prints error to stderr, exits 3 |
+
+---
+
+## Verification Procedure
+
+### Environment
+
+- **OS:** Ubuntu Xenial 16.04 Server
+- **User:** `root`
+- **Network:** internet access available
+
+### Execution Rules
+
+- The repository is cloned by URL (e.g. `https://github.com/user/task4_3`); a different repository name results in automatic failure.
+- `task4_3.sh` is launched automatically from the repository root; a different script name or subdirectory location results in automatic failure.
+- The script is run with multiple parameter combinations covering all error and success cases listed below.
+
+---
+
+## Expected Behavior
+
+### Successful backup run
+
+- `/tmp/backups/` is created if it does not exist.
+- A new archive is created at `/tmp/backups/<dir>-<timestamp>.tar.gz`.
+- After creation, archives for the given source directory are counted; any beyond the specified limit are deleted, oldest first.
+- The script exits with code `0`.
+
+### Error — wrong number of arguments
+
+- Message printed to **stderr**.
+- Script exits with a **non-zero** code.
+- No backup is created.
+
+### Error — source directory does not exist
+
+- Message printed to **stderr**.
+- Script exits with a **non-zero** code.
+- No backup is created.
+
+### Error — backup count argument is not a valid number
+
+- Message printed to **stderr**.
+- Script exits with a **non-zero** code.
+- No backup is created.
+
+> **Note:** All error messages must go to **stderr**. Output sent to stdout will not be detected by the checker and the script will be considered non-compliant.
